@@ -18,16 +18,23 @@ package com.merxury.blocker.core.controllers.shizuku
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.ServiceConnection
 import android.content.pm.IPackageManager
 import android.os.Build
+import android.os.IBinder
+import android.widget.Toast
+import com.merxury.blocker.core.controller.IUserService
 import com.merxury.blocker.core.controllers.IController
 import com.merxury.blocker.core.controllers.utils.ContextUtils.userId
 import com.merxury.blocker.core.model.ComponentState
 import com.merxury.blocker.core.model.data.ComponentInfo
 import com.merxury.blocker.core.utils.PackageInfoDataSource
 import dagger.hilt.android.qualifiers.ApplicationContext
+import rikka.shizuku.Shizuku
+import rikka.shizuku.Shizuku.UserServiceArgs
 import rikka.shizuku.ShizukuBinderWrapper
 import rikka.shizuku.SystemServiceHelper
+import rikka.shizuku.shared.BuildConfig
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,6 +43,8 @@ internal class ShizukuController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val packageInfoDataSource: PackageInfoDataSource,
 ) : IController {
+
+    var iUserService: IUserService? = null
     private val pm: IPackageManager by lazy {
         IPackageManager.Stub.asInterface(
             ShizukuBinderWrapper(
@@ -44,29 +53,39 @@ internal class ShizukuController @Inject constructor(
         )
     }
 
+
+
     override suspend fun switchComponent(
         component: ComponentInfo,
         state: ComponentState,
     ): Boolean {
         val packageName = component.packageName
         val componentName = component.name
+        val shizukuUtil = ShizukuUtil()
+        println(shizukuUtil.execCmd("ls"))
         // 0 means kill the application
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            pm.setComponentEnabledSetting(
-                ComponentName(packageName, componentName),
-                state.pmValue,
-                0,
-                context.userId,
-                context.packageName,
-            )
-        } else {
-            pm.setComponentEnabledSetting(
-                ComponentName(packageName, componentName),
-                state.pmValue,
-                0,
-                context.userId,
-            )
+        if (Build.VERSION.RELEASE=="16") {
+            shizukuUtil.execCmd("service call  miui.mqsas.IMQSNative 21 i32 1 s16 \"service\" i32 1 s16 'call package 87 i32 1 s16 ${packageName} s16 ${componentName} i32 ${state.pmValue} i32 0 i32 0 s16 shell' s16 '/data/mqsas/call.txt' i32 60")
+        } else if (Build.VERSION.RELEASE=="15") {
+            shizukuUtil.execCmd("service call  miui.mqsas.IMQSNative 21 i32 1 s16 \"service\" i32 1 s16 'call package 86 i32 1 s16 ${packageName} s16 ${componentName} i32 ${state.pmValue} i32 0 i32 0 s16 shell' s16 '/data/mqsas/call.txt' i32 60")
         }
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+//
+//            pm.setComponentEnabledSetting(
+//                ComponentName(packageName, componentName),
+//                state.pmValue,
+//                0,
+//                context.userId,
+//                context.packageName,
+//            )
+//        } else {
+//            pm.setComponentEnabledSetting(
+//                ComponentName(packageName, componentName),
+//                state.pmValue,
+//                0,
+//                context.userId,
+//            )
+//        }
         return true
     }
 

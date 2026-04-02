@@ -18,11 +18,15 @@ package com.merxury.blocker.core.controllers.shizuku
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.RemoteException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import rikka.shizuku.Shizuku
 import rikka.sui.Sui
 import timber.log.Timber
+import java.io.BufferedReader
+import java.io.IOException
+import java.io.InputStreamReader
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
