@@ -1,0 +1,149 @@
+name: Blocker Xiaomi Auto Build
+
+on:
+  # 手动编译
+  workflow_dispatch:
+
+  # 推送代码自动编译
+  push:
+    branches:
+      - main
+
+  # PR 自动检查
+  pull_request:
+    branches:
+      - main
+
+# 权限
+permissions:
+  contents: read
+
+# 防止重复编译
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # =========================
+      # 1. 获取源码
+      # =========================
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # =========================
+      # 2. 配置 JDK 17
+      # =========================
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # =========================
+      # 3. 配置 Gradle
+      # =========================
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # =========================
+      # 4. 配置 Android SDK
+      # =========================
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # =========================
+      # 5. 检查环境
+      # =========================
+      - name: Check Environment
+        run: |
+          java -version
+          ./gradlew --version
+
+      # =========================
+      # 6. Gradle 权限
+      # =========================
+      - name: Grant Execute Permission
+        run: chmod +x gradlew
+
+      # =========================
+      # 7. 自动修复代码格式
+      # =========================
+      - name: Auto Format Code
+        run: |
+          ./gradlew spotlessApply \
+            --no-configuration-cache \
+            --no-daemon
+
+      # =========================
+      # 8. 检查代码格式
+      # =========================
+      - name: Spotless Check
+        run: |
+          ./gradlew spotlessCheck \
+            --no-configuration-cache \
+            --no-daemon
+
+      # =========================
+      # 9. 运行单元测试
+      # =========================
+      - name: Run Unit Tests
+        run: |
+          ./gradlew testFossDebugUnitTest \
+            --no-configuration-cache \
+            --no-daemon
+
+      # =========================
+      # 10. 编译 FOSS Release APK
+      # =========================
+      - name: Build FOSS Release APK
+        run: |
+          ./gradlew :app-compose:assembleFossRelease \
+            --stacktrace \
+            --no-configuration-cache \
+            --no-daemon
+
+      # =========================
+      # 11. 检查 APK
+      # =========================
+      - name: Check APK
+        run: |
+          echo "Searching APK files..."
+
+          find app-compose/build/outputs/apk \
+            -type f -name "*.apk"
+
+          test -n "$(find app-compose/build/outputs/apk \
+            -type f -name "*.apk" -print -quit)"
+
+      # =========================
+      # 12. 上传 APK
+      # =========================
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Blocker-Xiaomi-FOSS-APK
+          path: app-compose/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      # =========================
+      # 13. 上传测试报告
+      # =========================
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Blocker-Xiaomi-Test-Reports
+          path: |
+            **/build/reports/tests/**
+            **/build/reports/lint-results*
+          if-no-files-found: ignore
+          retention-days: 7
