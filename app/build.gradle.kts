@@ -34,7 +34,7 @@ android {
     namespace = "com.merxury.blocker"
     defaultConfig {
         applicationId = "com.merxury.blocker"
-        versionCode = 1270
+        versionCode = 1271
         versionName = "1.2.70" // X.Y.Z; X = Major, Y = minor, Z = Patch level
 
         // Custom test runner to set up Hilt dependency graph
